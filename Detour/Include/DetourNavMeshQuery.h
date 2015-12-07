@@ -160,6 +160,9 @@ struct dtRaycastHit
 	/// The hit parameter. (FLT_MAX if no wall hit.)
 	float t; 
 	
+	/// endPos	The final position of the trace. [(x, y, z)]
+	float endPos[3];
+
 	/// hitNormal	The normal of the nearest wall hit. [(x, y, z)]
 	float hitNormal[3];
 	
@@ -174,6 +177,8 @@ struct dtRaycastHit
 
 	///  The cost of the path until hit.
 	float pathCost;
+
+	dtRaycastHit();
 };
 
 struct dtMultiPathGoal

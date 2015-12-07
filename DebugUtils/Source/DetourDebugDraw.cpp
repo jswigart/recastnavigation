@@ -22,6 +22,7 @@
 #include "DetourCommon.h"
 #include "DetourNode.h"
 #include "DetourMath.h"
+#include "DetourPathCorridor.h"
 
 static float distancePtLine2d(const float* pt, const float* p, const float* q)
 {
@@ -902,5 +903,38 @@ void duDebugDrawNavMeshInRadius( struct duDebugDraw* dd, const dtNavMesh& mesh, 
 	}
 }
 
+void duDebugDrawCorridor( struct duDebugDraw* dd, const dtNavMesh& mesh, const dtPathCorridor* corridor, unsigned int col )
+{
+	static const float thr = 0.01f*0.01f;
+	
+	dd->begin( DU_DRAW_TRIS );
 
+	for ( int i = 0; i < corridor->getPathCount(); ++i )
+	{
+		const dtPolyRef ref = corridor->getPath()[ i ];
+		
+		const dtMeshTile* tile = 0;
+		const dtPoly* poly = 0;
+		if ( dtStatusSucceed( mesh.getTileAndPolyByRef( ref, &tile, &poly ) ) )
+		{
+			if ( poly->getPolyType() == DT_POLYTYPE_OFFMESH_CONNECTION ) 
+				continue;
+
+			const dtPolyDetail* p = &tile->detailMeshes[ i ];
+			for ( int j = 0; j < p->triCount; ++j )
+			{
+				const unsigned char* t = &tile->detailTris[ ( p->triBase + j ) * 4 ];
+				for ( int k = 0; k < 3; ++k )
+				{
+					if ( t[ k ] < p->vertCount )
+						dd->vertex( &tile->verts[ poly->verts[ t[ k ] ] * 3 ], col );
+					else
+						dd->vertex( &tile->detailVerts[ ( p->vertBase + t[ k ] - p->vertCount ) * 3 ], col );
+				}
+			}
+		}
+	}
+
+	dd->end();
+}
 

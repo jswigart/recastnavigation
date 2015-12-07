@@ -23,6 +23,8 @@
 #include "DetourNavMeshQuery.h"
 #include "DetourTileCacheBuilder.h"
 
+class dtPathCorridor;
+
 enum DrawNavMeshFlags
 {
 	DU_DRAWNAVMESH_OFFMESHCONS = 0x01,
@@ -45,5 +47,7 @@ void duDebugDrawTileCacheContours(duDebugDraw* dd, const struct dtTileCacheConto
 void duDebugDrawTileCachePolyMesh(duDebugDraw* dd, const struct dtTileCachePolyMesh& lmesh,
 								  const float* orig, const float cs, const float ch);
 void duDebugDrawNavMeshInRadius( struct duDebugDraw* dd, const dtNavMesh& mesh, unsigned char flags, const float pos[ 3 ], const float radius );
+
+void duDebugDrawCorridor( struct duDebugDraw* dd, const dtNavMesh& mesh, const dtPathCorridor* corridor, unsigned int col );
 
 #endif // DETOURDEBUGDRAW_H

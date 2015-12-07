@@ -73,6 +73,9 @@ struct dtNavMeshCreateParams
 	/// The number of off-mesh connections. [Limit: >= 0]
 	int offMeshConCount;
 
+	const dtUserRef*	userRefs;
+	int					userRefNum;
+
 	/// @}
 	/// @name Tile Attributes
 	/// @note The tile grid/layer data can be left at zero if the destination is a single tile mesh.

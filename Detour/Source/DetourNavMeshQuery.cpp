@@ -27,6 +27,17 @@
 #include "DetourAssert.h"
 #include <new>
 
+dtRaycastHit::dtRaycastHit()
+	: t( 0.0f )
+	, path( NULL )
+	, pathCount( 0 )
+	, maxPath( 0 )
+	, pathCost( 0.0f )
+{
+	dtVset( endPos, 0.f, 0.f, 0.f );
+	dtVset( hitNormal, 0.f, 0.f, 0.f );
+}
+
 /// @class dtQueryFilter
 ///
 /// <b>The Default Implementation</b>
@@ -767,7 +778,10 @@ dtStatus dtNavMeshQuery::findNearestPoly(const float* center, const float* exten
 	
 	// Find nearest polygon amongst the nearby polygons.
 	dtPolyRef nearest = 0;
+	float nearestTemp[ 3 ];
 	float nearestDistanceSqr = FLT_MAX;
+	dtVcopy( nearestTemp, center );
+
 	for (int i = 0; i < polyCount; ++i)
 	{
 		dtPolyRef ref = polys[i];
@@ -795,15 +809,17 @@ dtStatus dtNavMeshQuery::findNearestPoly(const float* center, const float* exten
 		
 		if (d < nearestDistanceSqr)
 		{
-			if (nearestPt)
-				dtVcopy(nearestPt, closestPtPoly);
+			dtVcopy( nearestTemp, closestPtPoly );
 			nearestDistanceSqr = d;
 			nearest = ref;
 		}
 	}
 	
-	if (nearestRef)
+	if ( nearestRef )
 		*nearestRef = nearest;
+
+	if ( nearestPt )
+		dtVcopy( nearestPt, nearestTemp );
 	
 	return DT_SUCCESS;
 }
@@ -2520,6 +2536,7 @@ dtStatus dtNavMeshQuery::raycast(dtPolyRef startRef, const float* startPos, cons
 			// add the cost
 			if (options & DT_RAYCAST_USE_COSTS)
 				hit->pathCost += filter->getCost(curPos, endPos, prevRef, prevTile, prevPoly, curRef, tile, poly, curRef, tile, poly);
+			dtVcopy( hit->endPos, endPos );
 			return status;
 		}
 		
@@ -2604,21 +2621,23 @@ dtStatus dtNavMeshQuery::raycast(dtPolyRef startRef, const float* startPos, cons
 			}
 		}
 		
-		// add the cost
-		if (options & DT_RAYCAST_USE_COSTS)
 		{
 			// compute the intersection point at the furthest end of the polygon
 			// and correct the height (since the raycast moves in 2d)
-			dtVcopy(lastPos, curPos);
-			dtVmad(curPos, startPos, dir, hit->t);
-			float* e1 = &verts[segMax*3];
-			float* e2 = &verts[((segMax+1)%nv)*3];
-			float eDir[3], diff[3];
-			dtVsub(eDir, e2, e1);
-			dtVsub(diff, curPos, e1);
-			float s = dtSqr(eDir[0]) > dtSqr(eDir[2]) ? diff[0] / eDir[0] : diff[2] / eDir[2];
-			curPos[1] = e1[1] + eDir[1] * s;
+			dtVcopy( lastPos, curPos );
+			dtVmad( curPos, startPos, dir, hit->t );
+			float* e1 = &verts[ segMax * 3 ];
+			float* e2 = &verts[ ( ( segMax + 1 ) % nv ) * 3 ];
+			float eDir[ 3 ], diff[ 3 ];
+			dtVsub( eDir, e2, e1 );
+			dtVsub( diff, curPos, e1 );
+			float s = dtSqr( eDir[ 0 ] ) > dtSqr( eDir[ 2 ] ) ? diff[ 0 ] / eDir[ 0 ] : diff[ 2 ] / eDir[ 2 ];
+			curPos[ 1 ] = e1[ 1 ] + eDir[ 1 ] * s;
+		}
 
+		// add the cost
+		if (options & DT_RAYCAST_USE_COSTS)
+		{
 			hit->pathCost += filter->getCost(lastPos, curPos, prevRef, prevTile, prevPoly, curRef, tile, poly, nextRef, nextTile, nextPoly);
 		}
 
@@ -2637,7 +2656,7 @@ dtStatus dtNavMeshQuery::raycast(dtPolyRef startRef, const float* startPos, cons
 			hit->hitNormal[1] = 0;
 			hit->hitNormal[2] = -dx;
 			dtVnormalize(hit->hitNormal);
-			
+			dtVcopy( hit->endPos, curPos );
 			hit->pathCount = n;
 			return status;
 		}
@@ -2893,7 +2912,8 @@ dtStatus dtNavMeshQuery::findMultiPath( dtPolyRef startRef, const float* startPo
 		const dtPolyRef bestRef = bestNode->id;
 		const dtMeshTile* bestTile = 0;
 		const dtPoly* bestPoly = 0;
-		m_nav->getTileAndPolyByRefUnsafe( bestRef, &bestTile, &bestPoly );
+		if ( dtStatusFailed( m_nav->getTileAndPolyByRef( bestRef, &bestTile, &bestPoly ) ) )
+			return DT_INVALID_PARAM;
 
 		// does this reach one of the goals?
 		searchDone = true;
@@ -2952,12 +2972,8 @@ dtStatus dtNavMeshQuery::findMultiPath( dtPolyRef startRef, const float* startPo
 
 		// Get parent poly and tile.
 		dtPolyRef parentRef = 0;
-		const dtMeshTile* parentTile = 0;
-		const dtPoly* parentPoly = 0;
 		if ( bestNode->pidx )
 			parentRef = m_nodePool->getNodeAtIdx( bestNode->pidx )->id;
-		if ( parentRef )
-			m_nav->getTileAndPolyByRefUnsafe( parentRef, &parentTile, &parentPoly );
 
 		for ( unsigned int i = bestPoly->firstLink; i != DT_NULL_LINK; i = bestTile->links[ i ].next )
 		{
@@ -2970,7 +2986,8 @@ dtStatus dtNavMeshQuery::findMultiPath( dtPolyRef startRef, const float* startPo
 			// Expand to neighbour
 			const dtMeshTile* neighbourTile = 0;
 			const dtPoly* neighbourPoly = 0;
-			m_nav->getTileAndPolyByRefUnsafe( neighbourRef, &neighbourTile, &neighbourPoly );
+			if ( dtStatusFailed( m_nav->getTileAndPolyByRef( neighbourRef, &neighbourTile, &neighbourPoly ) ) )
+				continue;
 
 			// Do not advance if the polygon is excluded by the filter.
 			if ( !filter->passFilter( neighbourRef, neighbourTile, neighbourPoly ) )

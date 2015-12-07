@@ -23,7 +23,6 @@
 #include "DetourAssert.h"
 #include "DetourAlloc.h"
 
-
 int dtMergeCorridorStartMoved(dtPolyRef* path, const int npath, const int maxPath,
 							  const dtPolyRef* visited, const int nvisited)
 {
@@ -250,7 +249,7 @@ If the target is within range, it will be the last corner and have a polygon ref
 */
 int dtPathCorridor::findCorners(float* cornerVerts, unsigned char* cornerFlags,
 							  dtPolyRef* cornerPolys, const int maxCorners,
-							  dtNavMeshQuery* navquery, const dtQueryFilter* filter,
+							  dtNavMeshQuery* navquery, const dtQueryFilter* /*filter*/,
 							  int options )
 {
 	dtAssert(m_path);
@@ -536,6 +535,7 @@ bool dtPathCorridor::fixPathStart(dtPolyRef safeRef, const float* safePos)
 	{
 		m_path[0] = safeRef;
 		m_path[1] = 0;
+		m_npath = 1;
 	}
 	
 	return true;
@@ -593,6 +593,5 @@ bool dtPathCorridor::isValid(const int maxLookAhead, dtNavMeshQuery* navquery, c
 		if (!navquery->isValidPolyRef(m_path[i], filter))
 			return false;
 	}
-
 	return true;
 }

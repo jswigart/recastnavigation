@@ -910,6 +910,7 @@ dtStatus dtNavMesh::addTile(unsigned char* data, int dataSize, int flags,
 	const int detailTrisSize = dtAlign4(sizeof(unsigned char)*4*header->detailTriCount);
 	const int bvtreeSize = dtAlign4(sizeof(dtBVNode)*header->bvNodeCount);
 	const int offMeshLinksSize = dtAlign4(sizeof(dtOffMeshConnection)*header->offMeshConCount);
+	const int userRefSize = dtAlign4( sizeof( dtUserRef )*header->userRefNum );
 	
 	unsigned char* d = data + headerSize;
 	tile->verts = (float*)d; d += vertsSize;
@@ -920,6 +921,7 @@ dtStatus dtNavMesh::addTile(unsigned char* data, int dataSize, int flags,
 	tile->detailTris = (unsigned char*)d; d += detailTrisSize;
 	tile->bvTree = (dtBVNode*)d; d += bvtreeSize;
 	tile->offMeshCons = (dtOffMeshConnection*)d; d += offMeshLinksSize;
+	tile->userRefs = (dtUserRef*)d; d += userRefSize;
 
 	// If there are no items in the bvtree, reset the tree pointer.
 	if (!bvtreeSize)
@@ -1278,6 +1280,7 @@ dtStatus dtNavMesh::removeTile(dtTileRef ref, unsigned char** data, int* dataSiz
 	tile->detailTris = 0;
 	tile->bvTree = 0;
 	tile->offMeshCons = 0;
+	tile->userRefs = 0;
 
 	// Update salt, salt should never be zero.
 #ifdef DT_POLYREF64

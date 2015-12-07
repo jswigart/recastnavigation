@@ -396,21 +396,22 @@ bool dtCreateNavMeshData(dtNavMeshCreateParams* params, unsigned char** outData,
 			detailTriCount += nv-2;
 		}
 	}
-	
+
 	// Calculate data size
-	const int headerSize = dtAlign4(sizeof(dtMeshHeader));
-	const int vertsSize = dtAlign4(sizeof(float)*3*totVertCount);
-	const int polysSize = dtAlign4(sizeof(dtPoly)*totPolyCount);
-	const int linksSize = dtAlign4(sizeof(dtLink)*maxLinkCount);
-	const int detailMeshesSize = dtAlign4(sizeof(dtPolyDetail)*params->polyCount);
-	const int detailVertsSize = dtAlign4(sizeof(float)*3*uniqueDetailVertCount);
-	const int detailTrisSize = dtAlign4(sizeof(unsigned char)*4*detailTriCount);
-	const int bvTreeSize = params->buildBvTree ? dtAlign4(sizeof(dtBVNode)*params->polyCount*2) : 0;
-	const int offMeshConsSize = dtAlign4(sizeof(dtOffMeshConnection)*storedOffMeshConCount);
-	
+	const int headerSize = dtAlign4( sizeof( dtMeshHeader ) );
+	const int vertsSize = dtAlign4( sizeof( float ) * 3 * totVertCount );
+	const int polysSize = dtAlign4( sizeof( dtPoly )*totPolyCount );
+	const int linksSize = dtAlign4( sizeof( dtLink )*maxLinkCount );
+	const int detailMeshesSize = dtAlign4( sizeof( dtPolyDetail )*params->polyCount );
+	const int detailVertsSize = dtAlign4( sizeof( float ) * 3 * uniqueDetailVertCount );
+	const int detailTrisSize = dtAlign4( sizeof( unsigned char ) * 4 * detailTriCount );
+	const int bvTreeSize = params->buildBvTree ? dtAlign4( sizeof( dtBVNode )*params->polyCount * 2 ) : 0;
+	const int offMeshConsSize = dtAlign4( sizeof( dtOffMeshConnection )*storedOffMeshConCount );
+	const int userRefSize = dtAlign4( sizeof( dtUserRef )*params->userRefNum );
+
 	const int dataSize = headerSize + vertsSize + polysSize + linksSize +
 						 detailMeshesSize + detailVertsSize + detailTrisSize +
-						 bvTreeSize + offMeshConsSize;
+						 bvTreeSize + offMeshConsSize + userRefSize;
 						 
 	unsigned char* data = (unsigned char*)dtAlloc(sizeof(unsigned char)*dataSize, DT_ALLOC_PERM);
 	if (!data)
@@ -419,7 +420,7 @@ bool dtCreateNavMeshData(dtNavMeshCreateParams* params, unsigned char** outData,
 		return false;
 	}
 	memset(data, 0, dataSize);
-	
+
 	unsigned char* d = data;
 	dtMeshHeader* header = (dtMeshHeader*)d; d += headerSize;
 	float* navVerts = (float*)d; d += vertsSize;
@@ -430,7 +431,7 @@ bool dtCreateNavMeshData(dtNavMeshCreateParams* params, unsigned char** outData,
 	unsigned char* navDTris = (unsigned char*)d; d += detailTrisSize;
 	dtBVNode* navBvtree = (dtBVNode*)d; d += bvTreeSize;
 	dtOffMeshConnection* offMeshCons = (dtOffMeshConnection*)d; d += offMeshConsSize;
-	
+	dtUserRef* userRefs = (dtUserRef*)d; d += userRefSize;
 	
 	// Store header
 	header->magic = DT_NAVMESH_MAGIC;
@@ -453,6 +454,7 @@ bool dtCreateNavMeshData(dtNavMeshCreateParams* params, unsigned char** outData,
 	header->walkableRadius = params->walkableRadius;
 	header->walkableClimb = params->walkableClimb;
 	header->offMeshConCount = storedOffMeshConCount;
+	header->userRefNum = params->userRefNum;
 	header->bvNodeCount = params->buildBvTree ? params->polyCount*2 : 0;
 	
 	const int offMeshVertsBase = params->vertCount;
@@ -536,6 +538,11 @@ bool dtCreateNavMeshData(dtNavMeshCreateParams* params, unsigned char** outData,
 			p->setPolyType(DT_POLYTYPE_OFFMESH_CONNECTION);
 			n++;
 		}
+	}
+	
+	if ( params->userRefNum )
+	{
+		memcpy( userRefs, params->userRefs, userRefSize );
 	}
 
 	// Store detail meshes and vertices.
